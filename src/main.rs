@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PresentMode};
 use bevy_inspector_egui::WorldInspectorPlugin;
 
 mod shape;
@@ -7,10 +7,11 @@ mod tick;
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            height: 600.,
-            width: 800.,
+            height: 650.,
+            width: 850.,
             resizable: false,
             title: "Tetris".into(),
+            present_mode: PresentMode::AutoVsync,
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
