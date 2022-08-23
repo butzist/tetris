@@ -1,6 +1,7 @@
 use bevy::{prelude::*, window::PresentMode};
 use bevy_inspector_egui::WorldInspectorPlugin;
 
+mod bricks;
 mod shape;
 mod tick;
 
@@ -16,6 +17,7 @@ fn main() {
         })
         .add_plugins(DefaultPlugins)
         .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(bricks::BrickPlugin)
         .add_plugin(shape::ShapePlugin)
         .add_plugin(tick::TickPlugin)
         .add_startup_system(setup)

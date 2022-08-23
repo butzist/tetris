@@ -1,10 +1,10 @@
 use bevy::prelude::*;
+use rand::{thread_rng, Rng};
 
-use crate::tick::{Tick, TickTimer};
-
-const BRICK_SIZE: f32 = 50.;
-
-pub(crate) struct ShapePlugin;
+use crate::{
+    bricks::{spawn_brick, Brick, Bricks, BRICK_SIZE},
+    tick::{Tick, TickTimer},
+};
 
 #[derive(Component, Default, Clone, Debug)]
 struct Shape {
@@ -12,7 +12,9 @@ struct Shape {
 }
 
 #[derive(Component, Clone, Debug)]
-struct ShapeBlock;
+struct ShapeBrick;
+
+pub struct ShapePlugin;
 
 impl Plugin for ShapePlugin {
     fn build(&self, app: &mut App) {
@@ -26,23 +28,50 @@ impl Plugin for ShapePlugin {
 fn move_shape(
     mut commands: Commands,
     mut query: Query<(Entity, &mut Transform, &mut Shape, &Children)>,
-    child_query: Query<&Transform, (With<ShapeBlock>, Without<Shape>)>,
+    child_query: Query<(&Transform, &Sprite), (With<ShapeBrick>, Without<Shape>)>,
+    bricks: ResMut<Bricks>,
 ) {
     let (entity, mut transform, mut shape, children) = query.single_mut();
-    if !children
+    let children: Vec<_> = children
         .into_iter()
         .map(|child| child_query.get(*child).unwrap())
-        .any(|child_transform| collides(&shape.next_transform, child_transform))
+        .collect();
+
+    if !children
+        .iter()
+        .any(|(child_transform, _)| collides(&shape.next_transform, child_transform, &*bricks))
     {
         *transform = shape.next_transform;
     } else if shape.next_transform.translation.y < transform.translation.y {
         // if shape could not move down
+        shape_to_bricks(&mut commands, bricks, &*transform, &children);
         commands.entity(entity).despawn_recursive();
         spawn_shape(commands);
     }
 
     // reset next transform
     shape.next_transform = *transform;
+}
+
+fn shape_to_bricks(
+    commands: &mut Commands,
+    mut bricks: ResMut<Bricks>,
+    transform: &Transform,
+    children: &[(&Transform, &Sprite)],
+) {
+    for (&child, sprite) in children {
+        let child_position = transform.mul_transform(child);
+        let coords = to_brick_coordinates(child_position);
+        spawn_brick(
+            commands,
+            &mut *bricks,
+            Brick {
+                x: coords.0,
+                y: coords.1,
+            },
+            sprite.color,
+        );
+    }
 }
 
 fn fall_shape(mut query: Query<(&mut Shape, &Transform)>, mut ticks: EventReader<Tick>) {
@@ -57,11 +86,10 @@ fn fall_shape(mut query: Query<(&mut Shape, &Transform)>, mut ticks: EventReader
     }
 }
 
-fn collides(parent_transform: &Transform, child_transform: &Transform) -> bool {
+fn collides(parent_transform: &Transform, child_transform: &Transform, bricks: &Bricks) -> bool {
     let position = parent_transform.mul_transform(*child_transform);
 
-    let x = (position.translation.x / BRICK_SIZE) as i8;
-    let y = ((position.translation.y + 300.) / BRICK_SIZE) as i8;
+    let (x, y) = to_brick_coordinates(position);
 
     if x > 8 || x < -8 {
         return true;
@@ -71,7 +99,17 @@ fn collides(parent_transform: &Transform, child_transform: &Transform) -> bool {
         return true;
     }
 
+    if bricks.0.contains_key(&(x, y)) {
+        return true;
+    }
+
     false
+}
+
+fn to_brick_coordinates(position: Transform) -> (i8, i8) {
+    let x = (position.translation.x / BRICK_SIZE).round() as i8;
+    let y = ((position.translation.y + 300.) / BRICK_SIZE).round() as i8;
+    (x, y)
 }
 
 fn spawn_shape(mut commands: Commands) {
@@ -93,13 +131,11 @@ fn spawn_shape(mut commands: Commands) {
             next_transform: origin,
         })
         .with_children(|parent| {
-            let mut make_block = |x: i8, y: i8| {
+            let color = Color::hsl(thread_rng().gen_range(0.0..360.0), 1.0, 0.6);
+            let mut make_brick = |x: i8, y: i8| {
                 parent
                     .spawn_bundle(SpriteBundle {
-                        sprite: Sprite {
-                            color: Color::RED,
-                            ..default()
-                        },
+                        sprite: Sprite { color, ..default() },
                         transform: Transform {
                             translation: Vec3 {
                                 x: x as f32 * BRICK_SIZE,
@@ -115,13 +151,13 @@ fn spawn_shape(mut commands: Commands) {
                         },
                         ..default()
                     })
-                    .insert(ShapeBlock);
+                    .insert(ShapeBrick);
             };
 
-            make_block(0, 0);
-            make_block(1, 0);
-            make_block(-1, 0);
-            make_block(0, -1);
+            make_brick(0, 0);
+            make_brick(1, 0);
+            make_brick(-1, 0);
+            make_brick(0, -1);
         });
 }
 
