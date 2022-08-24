@@ -132,7 +132,7 @@ fn spawn_shape(mut commands: Commands) {
         })
         .with_children(|parent| {
             let color = Color::hsl(thread_rng().gen_range(0.0..360.0), 1.0, 0.6);
-            let mut make_brick = |x: i8, y: i8| {
+            let make_brick = |x: i8, y: i8| {
                 parent
                     .spawn_bundle(SpriteBundle {
                         sprite: Sprite { color, ..default() },
@@ -154,11 +154,65 @@ fn spawn_shape(mut commands: Commands) {
                     .insert(ShapeBrick);
             };
 
+            make_random_shape(make_brick);
+        });
+}
+
+fn make_random_shape(mut make_brick: impl FnMut(i8, i8)) {
+    let choice = thread_rng().gen_range(0..=6);
+
+    match choice {
+        0 => {
+            // T
             make_brick(0, 0);
             make_brick(1, 0);
             make_brick(-1, 0);
             make_brick(0, -1);
-        });
+        }
+        1 => {
+            // I
+            make_brick(-1, 0);
+            make_brick(0, 0);
+            make_brick(1, 0);
+            make_brick(2, 0);
+        }
+        2 => {
+            // L
+            make_brick(-2, 0);
+            make_brick(-1, 0);
+            make_brick(0, 0);
+            make_brick(0, -1);
+        }
+        3 => {
+            // L'
+            make_brick(2, 0);
+            make_brick(1, 0);
+            make_brick(0, 0);
+            make_brick(0, -1);
+        }
+        4 => {
+            // S
+            make_brick(0, 0);
+            make_brick(1, 0);
+            make_brick(-1, -1);
+            make_brick(0, -1);
+        }
+        5 => {
+            // Z
+            make_brick(0, 0);
+            make_brick(-1, 0);
+            make_brick(1, -1);
+            make_brick(0, -1);
+        }
+        6 => {
+            // O
+            make_brick(0, 0);
+            make_brick(1, 0);
+            make_brick(0, -1);
+            make_brick(1, -1);
+        }
+        _ => unreachable!(),
+    }
 }
 
 fn controls(
