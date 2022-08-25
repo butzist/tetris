@@ -1,5 +1,7 @@
 use bevy::{prelude::*, time::FixedTimestep, utils::hashbrown::HashMap};
 
+use crate::GameState;
+
 pub const BRICK_SIZE: f32 = 50.;
 
 #[derive(Component, Default, Clone, Debug, Reflect)]
@@ -16,14 +18,15 @@ pub struct BrickPlugin;
 
 impl Plugin for BrickPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(Bricks::default())
+        app.init_resource::<Bricks>()
             .register_type::<Brick>()
             .add_system_set(
-                SystemSet::new()
+                SystemSet::on_update(GameState::InGame)
                     .with_run_criteria(FixedTimestep::step(1. / 10.))
                     .with_system(remove_lines)
                     .with_system(move_lines_down),
-            );
+            )
+            .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset));
     }
 }
 
@@ -97,5 +100,13 @@ pub fn move_lines_down(mut bricks: ResMut<Bricks>, mut query: Query<(&mut Brick,
             }
             return; // nothing left to move
         }
+    }
+}
+
+pub fn reset(mut commands: Commands, mut query: Query<Entity, With<Brick>>) {
+    commands.insert_resource(Bricks::default());
+
+    for entity in &mut query {
+        commands.entity(entity).despawn();
     }
 }
