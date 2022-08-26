@@ -1,5 +1,4 @@
 use bevy::{prelude::*, window::PresentMode};
-use bevy_inspector_egui::WorldInspectorPlugin;
 
 mod audio;
 mod bricks;
@@ -28,7 +27,6 @@ fn main() {
         })
         .add_state(GameState::InGame)
         .add_plugins(DefaultPlugins)
-        .add_plugin(WorldInspectorPlugin::new())
         .add_plugin(bricks::BrickPlugin)
         .add_plugin(shape::ShapePlugin)
         .add_plugin(audio::AudioPlugin)
