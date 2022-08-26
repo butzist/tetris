@@ -21,6 +21,30 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = { version = "0.8.0", features = ["dynamic"] }
 bevy-inspector-egui = "0.12"
 rand = "0.8"
+
+[dependencies.bevy]
+version = "0.8"
+default-features = false
+features = [
+  "dynamic",
+  "render",
+  "animation",
+  "bevy_asset",
+  "bevy_scene",
+  "bevy_winit",
+  "bevy_gilrs",
+  "png",
+  "hdr",
+  "filesystem_watcher",
+  "x11"
+]
+
+[dependencies.bevy_kira_audio]
+version = "0.12"
+default-features = false
+features = [
+  "mp3",
+  "ogg",
+]
