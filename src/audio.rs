@@ -12,7 +12,9 @@ impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(bevy_kira_audio::AudioPlugin)
             .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(play_music))
-            .add_system_set(SystemSet::on_exit(GameState::InGame).with_system(stop_music));
+            .add_system_set(SystemSet::on_exit(GameState::InGame).with_system(stop_music))
+            .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(pause_music))
+            .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(unpause_music));
     }
 }
 
@@ -31,5 +33,23 @@ fn stop_music(
 ) {
     if let Some(instance) = audio_instances.get_mut(&handle) {
         instance.stop(AudioTween::default());
+    }
+}
+
+fn pause_music(
+    handle: Res<MusicInstanceHandle>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
+) {
+    if let Some(instance) = audio_instances.get_mut(&handle) {
+        instance.pause(AudioTween::default());
+    }
+}
+
+fn unpause_music(
+    handle: Res<MusicInstanceHandle>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
+) {
+    if let Some(instance) = audio_instances.get_mut(&handle) {
+        instance.resume(AudioTween::default());
     }
 }
