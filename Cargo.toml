@@ -5,9 +5,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[workspace]
-resolver = "2"
-
 [target.x86_64-unknown-linux-gnu]
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]
@@ -15,6 +12,10 @@ rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]
 # Enable a small amount of optimization in debug mode
 [profile.dev]
 opt-level = 1
+
+[profile.release]
+opt-level = "z"
+lto = "thin"
 
 # Enable high optimizations for dependencies (incl. Bevy), but not for our code:
 [profile.dev.package."*"]
@@ -27,7 +28,6 @@ rand = "0.8"
 version = "0.8"
 default-features = false
 features = [
-  "dynamic",
   "render",
   "animation",
   "bevy_asset",
@@ -47,3 +47,7 @@ features = [
   "mp3",
   "ogg",
 ]
+
+[features]
+default = ["fast-compile"]
+fast-compile = ["bevy/dynamic"]
