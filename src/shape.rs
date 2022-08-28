@@ -1,16 +1,16 @@
 use bevy::prelude::*;
+use ignore_result::Ignore;
 use rand::{thread_rng, Rng};
 
 use crate::{
     bricks::{spawn_brick, Brick, Bricks, BRICK_SIZE},
-    tick::{Tick, TickTimer},
+    controls::ControlEvent,
+    tick::Tick,
     GameState,
 };
 
 #[derive(Component, Default, Clone, Debug)]
-struct Shape {
-    next_transform: Transform,
-}
+struct Shape;
 
 #[derive(Component, Clone, Debug)]
 struct ShapeBrick;
@@ -22,43 +22,9 @@ impl Plugin for ShapePlugin {
         app.add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
             .add_system_set(
                 SystemSet::on_update(GameState::InGame)
-                    .with_system(controls.before(fall_shape))
-                    .with_system(fall_shape.before(move_shape))
                     .with_system(check_game_over.before(move_shape))
                     .with_system(move_shape),
             );
-    }
-}
-
-fn move_shape(
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut Transform, &mut Shape, &Children)>,
-    child_query: Query<(&Transform, &Sprite), (With<ShapeBrick>, Without<Shape>)>,
-    mut bricks: ResMut<Bricks>,
-) {
-    let commands = &mut commands;
-    let bricks = &mut *bricks;
-
-    for (entity, mut transform, mut shape, children) in &mut query {
-        let children: Vec<_> = children
-            .into_iter()
-            .map(|child| child_query.get(*child).unwrap())
-            .collect();
-
-        if !children
-            .iter()
-            .any(|(child_transform, _)| collides(&shape.next_transform, child_transform, bricks))
-        {
-            *transform = shape.next_transform;
-        } else if shape.next_transform.translation.y < transform.translation.y {
-            // if shape could not move down
-            shape_to_bricks(commands, bricks, &*transform, &children);
-            commands.entity(entity).despawn_recursive();
-            spawn_shape(commands);
-        }
-
-        // reset next transform
-        shape.next_transform = *transform;
     }
 }
 
@@ -88,6 +54,91 @@ fn check_game_over(
     }
 }
 
+fn move_shape(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Transform, &Children), With<Shape>>,
+    child_query: Query<(&Transform, &Sprite), (With<ShapeBrick>, Without<Shape>)>,
+    mut control_events: EventReader<ControlEvent>,
+    mut tick_events: EventReader<Tick>,
+    mut bricks: ResMut<Bricks>,
+) {
+    let commands = &mut commands;
+    let bricks = &mut *bricks;
+
+    if let Ok((entity, mut transform, children)) = query.get_single_mut() {
+        let transform = &mut *transform;
+        let children: Vec<_> = children
+            .into_iter()
+            .map(|child| child_query.get(*child).unwrap())
+            .collect();
+
+        for next_transform in control_events
+            .iter()
+            .filter_map(transform_from_control_event)
+        {
+            try_move_shape(next_transform, transform, &children, bricks).ignore();
+        }
+
+        for next_transform in tick_events.iter().map(|_| Transform {
+            translation: Vec3::Y * -BRICK_SIZE,
+            ..default()
+        }) {
+            let result = try_move_shape(next_transform, transform, &children, bricks);
+
+            if result.is_err() {
+                // if shape could not move down
+                shape_to_bricks(commands, bricks, &*transform, &children);
+                commands.entity(entity).despawn_recursive();
+                spawn_shape(commands);
+            }
+        }
+    }
+}
+
+fn try_move_shape(
+    next_transform: Transform,
+    transform: &mut Transform,
+    children: &Vec<(&Transform, &Sprite)>,
+    bricks: &mut Bricks,
+) -> Result<(), ()> {
+    let next_transform = Transform {
+        translation: next_transform.translation + transform.translation,
+        rotation: next_transform.rotation * transform.rotation,
+        ..default()
+    };
+    if !children
+        .iter()
+        .any(|(child_transform, _)| collides(&next_transform, child_transform, bricks))
+    {
+        *transform = next_transform;
+        Ok(())
+    } else {
+        Err(())
+    }
+}
+
+fn transform_from_control_event(event: &ControlEvent) -> Option<Transform> {
+    match event {
+        ControlEvent::SpeedupStart | ControlEvent::SpeedupEnd | ControlEvent::Pause => None,
+        ControlEvent::Left => Some(Transform {
+            translation: Vec3::X * -BRICK_SIZE,
+            ..default()
+        }),
+        ControlEvent::Right => Some(Transform {
+            translation: Vec3::X * BRICK_SIZE,
+            ..default()
+        }),
+        ControlEvent::RotateRight => Some(Transform {
+            rotation: Quat::from_rotation_z(-std::f32::consts::PI / 2.0),
+            ..default()
+        }),
+        ControlEvent::RotateLeft => Some(Transform {
+            rotation: Quat::from_rotation_z(std::f32::consts::PI / 2.0),
+            ..default()
+        }),
+    }
+}
+
 fn shape_to_bricks(
     commands: &mut Commands,
     bricks: &mut Bricks,
@@ -106,18 +157,6 @@ fn shape_to_bricks(
             },
             sprite.color,
         );
-    }
-}
-
-fn fall_shape(mut query: Query<(&mut Shape, &Transform)>, mut ticks: EventReader<Tick>) {
-    for (mut shape, transform) in &mut query {
-        if !ticks.is_empty() {
-            // reset other queued transforms
-            shape.next_transform = *transform;
-            for _ in ticks.iter() {
-                shape.next_transform.translation.y -= BRICK_SIZE;
-            }
-        }
     }
 }
 
@@ -162,9 +201,7 @@ fn spawn_shape(commands: &mut Commands) {
             transform: origin,
             ..default()
         })
-        .insert(Shape {
-            next_transform: origin,
-        })
+        .insert(Shape {})
         .with_children(|parent| {
             let color = Color::hsl(thread_rng().gen_range(0.0..360.0), 1.0, 0.6);
             let make_brick = |x: i8, y: i8| {
@@ -247,35 +284,6 @@ fn make_random_shape(mut make_brick: impl FnMut(i8, i8)) {
             make_brick(1, -1);
         }
         _ => unreachable!(),
-    }
-}
-
-fn controls(
-    keys: Res<Input<KeyCode>>,
-    mut tick_timer: ResMut<TickTimer>,
-    mut query: Query<&mut Shape>,
-) {
-    if keys.just_pressed(KeyCode::Down) {
-        tick_timer.speedup()
-    }
-    if keys.just_released(KeyCode::Down) {
-        tick_timer.end_speedup()
-    }
-
-    for mut shape in &mut query {
-        if keys.just_pressed(KeyCode::Right) {
-            shape.next_transform.translation.x += BRICK_SIZE;
-        }
-
-        if keys.just_pressed(KeyCode::Left) {
-            shape.next_transform.translation.x -= BRICK_SIZE;
-        }
-
-        if keys.just_pressed(KeyCode::Up) {
-            shape
-                .next_transform
-                .rotate(Quat::from_rotation_z(-std::f32::consts::PI / 2.0));
-        }
     }
 }
 

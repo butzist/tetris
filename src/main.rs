@@ -1,7 +1,9 @@
 use bevy::{prelude::*, window::PresentMode};
+use controls::ControlEvent;
 
 mod audio;
 mod bricks;
+mod controls;
 mod shape;
 mod tick;
 
@@ -33,15 +35,14 @@ fn main() {
         .add_plugin(bricks::BrickPlugin)
         .add_plugin(shape::ShapePlugin)
         .add_plugin(audio::AudioPlugin)
+        .add_plugin(controls::ControlsPlugin)
         .add_plugin(tick::TickPlugin)
         .add_startup_system(setup)
         .add_system(bevy::window::close_on_esc)
+        .add_system(pause_game)
         .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
-        .add_system_set(SystemSet::on_update(GameState::InGame).with_system(pause_game))
         .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(show_paused))
         .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(hide_paused))
-        .add_system_set(SystemSet::on_update(GameState::Paused).with_system(unpause_game))
-        .add_system_set(SystemSet::on_update(GameState::GameOver).with_system(restart_game))
         .add_system_set(SystemSet::on_enter(GameState::GameOver).with_system(show_game_over))
         .add_system_set(SystemSet::on_exit(GameState::GameOver).with_system(hide_game_over))
         .run();
@@ -101,26 +102,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(PausedText);
 }
 
-fn restart_game(mut keys: ResMut<Input<KeyCode>>, mut state: ResMut<State<GameState>>) {
-    if keys.just_pressed(KeyCode::Space) {
-        keys.reset(KeyCode::Space);
-        state
-            .replace(GameState::InGame)
-            .expect("cannot change state");
-    }
-}
+fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<State<GameState>>) {
+    for &event in control_events.iter() {
+        if event != ControlEvent::Pause {
+            continue;
+        }
 
-fn pause_game(mut keys: ResMut<Input<KeyCode>>, mut state: ResMut<State<GameState>>) {
-    if keys.just_pressed(KeyCode::Space) {
-        keys.reset(KeyCode::Space);
-        state.push(GameState::Paused).expect("cannot change state");
-    }
-}
-
-fn unpause_game(mut keys: ResMut<Input<KeyCode>>, mut state: ResMut<State<GameState>>) {
-    if keys.just_pressed(KeyCode::Space) {
-        keys.reset(KeyCode::Space);
-        state.pop().expect("cannot change state");
+        match state.current() {
+            GameState::InGame => state.push(GameState::Paused).expect("cannot change state"),
+            GameState::Paused => state.pop().expect("cannot change state"),
+            GameState::GameOver => state
+                .replace(GameState::InGame)
+                .expect("cannot change state"),
+        }
     }
 }
 
@@ -148,4 +142,4 @@ fn hide_paused(mut query: Query<&mut Visibility, With<PausedText>>) {
     }
 }
 
-fn reset(mut commands: Commands) {}
+fn reset(mut _commands: Commands) {}

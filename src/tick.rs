@@ -2,22 +2,20 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::GameState;
+use crate::{controls::ControlEvent, GameState};
 
-#[derive(Debug, Deref, DerefMut)]
-pub struct TickTimer(Timer);
+#[derive(Debug)]
+pub struct TickTimer {
+    timer: Timer,
+    in_speedup: bool,
+}
 
-impl TickTimer {
-    fn new() -> TickTimer {
-        TickTimer(Timer::from_seconds(1.0, true))
-    }
-
-    pub fn speedup(&mut self) {
-        self.set_duration(Duration::from_secs_f32(0.03));
-    }
-
-    pub fn end_speedup(&mut self) {
-        self.set_duration(Duration::from_secs_f32(1.0));
+impl Default for TickTimer {
+    fn default() -> Self {
+        Self {
+            timer: Timer::from_seconds(1.0, true),
+            in_speedup: false,
+        }
     }
 }
 
@@ -27,19 +25,37 @@ impl Plugin for TickPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<Tick>()
             .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
-            .add_system_set(SystemSet::on_update(GameState::InGame).with_system(tick_system));
+            .add_system_set(
+                SystemSet::on_update(GameState::InGame)
+                    .with_system(tick_system)
+                    .with_system(speedup),
+            );
     }
 }
 
+#[derive(Default)]
 pub struct Tick;
 fn tick_system(time: Res<Time>, mut writer: EventWriter<Tick>, mut timer: ResMut<TickTimer>) {
-    timer.tick(time.delta());
+    let time_step = if timer.in_speedup { 0.03 } else { 1.0 };
 
-    if timer.just_finished() {
-        writer.send(Tick);
+    timer.timer.set_duration(Duration::from_secs_f32(time_step));
+    timer.timer.tick(time.delta());
+
+    if timer.timer.just_finished() {
+        writer.send_default();
     }
 }
 
 fn reset(mut commands: Commands) {
-    commands.insert_resource(TickTimer::new())
+    commands.insert_resource(TickTimer::default())
+}
+
+fn speedup(mut timer: ResMut<TickTimer>, mut control_events: EventReader<ControlEvent>) {
+    for event in control_events.iter() {
+        match event {
+            ControlEvent::SpeedupStart => timer.in_speedup = true,
+            ControlEvent::SpeedupEnd => timer.in_speedup = false,
+            _ => (),
+        }
+    }
 }
