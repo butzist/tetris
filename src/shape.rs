@@ -34,7 +34,7 @@ impl Plugin for ShapePlugin {
 
 fn check_game_over(
     mut state: ResMut<State<GameState>>,
-    query: Query<(&Transform, &Children), With<Shape>>,
+    query: Query<(&Transform, &Children), (With<Shape>, Changed<Transform>)>,
     child_query: Query<(&Transform, &Sprite), (With<ShapeBrick>, Without<Shape>)>,
     bricks: Res<Bricks>,
 ) {
@@ -68,10 +68,8 @@ fn move_shape(
     mut bricks: ResMut<Bricks>,
 ) {
     let commands = &mut commands;
-    let bricks = &mut *bricks;
 
     if let Ok((entity, mut transform, children)) = query.get_single_mut() {
-        let transform = &mut *transform;
         let children: Vec<_> = children
             .into_iter()
             .map(|child| child_query.get(*child).unwrap())
@@ -81,18 +79,18 @@ fn move_shape(
             .iter()
             .filter_map(transform_from_control_event)
         {
-            try_move_shape(next_transform, transform, &children, bricks).ignore();
+            try_move_shape(next_transform, &mut transform, &children, &mut bricks).ignore();
         }
 
         for next_transform in tick_events.iter().map(|_| Transform {
             translation: Vec3::Y * -BRICK_SIZE,
             ..default()
         }) {
-            let result = try_move_shape(next_transform, transform, &children, bricks);
+            let result = try_move_shape(next_transform, &mut transform, &children, &mut bricks);
 
             if result.is_err() {
                 // if shape could not move down
-                shape_to_bricks(commands, bricks, &*transform, &children);
+                shape_to_bricks(commands, &mut bricks, &*transform, &children);
                 commands.entity(entity).despawn_recursive();
                 spawn_shape(commands);
                 spawn_events.send_default();
@@ -103,9 +101,9 @@ fn move_shape(
 
 fn try_move_shape(
     next_transform: Transform,
-    transform: &mut Transform,
+    transform: &mut Mut<Transform>,
     children: &Vec<(&Transform, &Sprite)>,
-    bricks: &mut Bricks,
+    bricks: &mut ResMut<Bricks>,
 ) -> Result<(), ()> {
     let next_transform = Transform {
         translation: next_transform.translation + transform.translation,
@@ -116,7 +114,7 @@ fn try_move_shape(
         .iter()
         .any(|(child_transform, _)| collides(&next_transform, child_transform, bricks))
     {
-        *transform = next_transform;
+        **transform = next_transform;
         Ok(())
     } else {
         Err(())

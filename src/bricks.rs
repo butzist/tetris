@@ -64,6 +64,10 @@ pub fn remove_lines(
     mut bricks: ResMut<Bricks>,
     mut events: EventWriter<LinesRemoved>,
 ) {
+    if !bricks.is_changed() {
+        return;
+    }
+
     let mut removed_lines = 0;
 
     for y in 0..13 {
@@ -89,7 +93,18 @@ pub fn remove_line(commands: &mut Commands, bricks: &mut Bricks, y: i8) {
     }
 }
 
-pub fn move_lines_down(mut bricks: ResMut<Bricks>, mut query: Query<(&mut Brick, &mut Transform)>) {
+pub fn move_lines_down(
+    mut bricks: ResMut<Bricks>,
+    mut done: Local<bool>,
+    mut query: Query<(&mut Brick, &mut Transform)>,
+) {
+    if *done && !bricks.is_changed() {
+        return;
+    } else {
+        // do not run again unless there's a change
+        *done = true;
+    }
+
     let mut from_ys = (0..13).into_iter();
     for to_y in 0..13 {
         if (-8..=8).all(|x| !bricks.contains_key(&(x, to_y))) {
@@ -103,6 +118,9 @@ pub fn move_lines_down(mut bricks: ResMut<Bricks>, mut query: Query<(&mut Brick,
                             let (mut brick, mut transform) =
                                 query.get_mut(entity).expect("no such entity");
                             let new_coords = (x, to_y);
+
+                            // run again
+                            *done = false;
 
                             bricks.insert(new_coords, entity);
                             brick.y = to_y;
