@@ -1,6 +1,8 @@
 use bevy::{audio::*, prelude::*};
 
-use crate::{GameState, GameStats};
+use crate::{
+    bricks::LinesRemoved, controls::ControlEvent, shape::ShapeSpawned, GameState, GameStats,
+};
 
 pub struct AudioPlugin;
 
@@ -13,8 +15,11 @@ impl Plugin for AudioPlugin {
             .add_system_set(SystemSet::on_exit(GameState::InGame).with_system(stop_music))
             .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(pause_music))
             .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(unpause_music))
+            .add_system_set(SystemSet::on_enter(GameState::GameOver).with_system(game_over))
             .add_system_set(
-                SystemSet::on_update(GameState::InGame).with_system(update_playback_speed),
+                SystemSet::on_update(GameState::InGame)
+                    .with_system(update_playback_speed)
+                    .with_system(sound_effects),
             );
     }
 }
@@ -32,6 +37,44 @@ fn play_music(
 
     let strong_handle = audio_sinks.get_handle(weak_handle);
     commands.insert_resource(MusicInstanceHandle(strong_handle));
+}
+
+fn game_over(asset_server: Res<AssetServer>, audio: Res<Audio>) {
+    audio.play(asset_server.load("sounds/gameover.ogg"));
+}
+
+fn sound_effects(
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
+    mut controls: EventReader<ControlEvent>,
+    mut shapes: EventReader<ShapeSpawned>,
+    mut lines: EventReader<LinesRemoved>,
+) {
+    if controls.iter().any(|c| {
+        [
+            ControlEvent::Left,
+            ControlEvent::Right,
+            ControlEvent::RotateLeft,
+            ControlEvent::RotateRight,
+        ]
+        .contains(c)
+    }) {
+        audio.play_with_settings(
+            asset_server.load("sounds/rotate.ogg"),
+            PlaybackSettings::ONCE.with_volume(0.2),
+        );
+    }
+
+    if shapes.iter().last().is_some() {
+        audio.play_with_settings(
+            asset_server.load("sounds/drop.ogg"),
+            PlaybackSettings::ONCE.with_volume(0.4),
+        );
+    }
+
+    if lines.iter().last().is_some() {
+        audio.play(asset_server.load("sounds/lines.ogg"));
+    }
 }
 
 fn stop_music(handle: Res<MusicInstanceHandle>, mut audio_sinks: ResMut<Assets<AudioSink>>) {
