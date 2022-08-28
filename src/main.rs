@@ -35,9 +35,10 @@ fn main() {
             width: 850.,
             resizable: false,
             title: "Tetris".into(),
-            present_mode: PresentMode::AutoVsync,
+            present_mode: PresentMode::Fifo,
             ..Default::default()
         })
+        .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)))
         .add_state(GameState::InGame)
         .add_plugins(DefaultPlugins)
         .add_plugin(bricks::BrickPlugin)
