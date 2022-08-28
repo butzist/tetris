@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::{controls::ControlEvent, GameState};
+use crate::{controls::ControlEvent, GameState, GameStats};
 
 #[derive(Debug)]
 pub struct TickTimer {
@@ -35,8 +35,14 @@ impl Plugin for TickPlugin {
 
 #[derive(Default)]
 pub struct Tick;
-fn tick_system(time: Res<Time>, mut writer: EventWriter<Tick>, mut timer: ResMut<TickTimer>) {
-    let time_step = if timer.in_speedup { 0.03 } else { 1.0 };
+fn tick_system(
+    time: Res<Time>,
+    mut writer: EventWriter<Tick>,
+    mut timer: ResMut<TickTimer>,
+    stats: Res<GameStats>,
+) {
+    let speed = 1.0 + stats.shapes_spawned as f32 * 0.02;
+    let time_step = if timer.in_speedup { 0.03 } else { 1.0 / speed };
 
     timer.timer.set_duration(Duration::from_secs_f32(time_step));
     timer.timer.tick(time.delta());

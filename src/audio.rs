@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 
-use crate::GameState;
+use crate::{GameState, GameStats};
 
 pub struct AudioPlugin;
 
@@ -14,7 +14,10 @@ impl Plugin for AudioPlugin {
             .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(play_music))
             .add_system_set(SystemSet::on_exit(GameState::InGame).with_system(stop_music))
             .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(pause_music))
-            .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(unpause_music));
+            .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(unpause_music))
+            .add_system_set(
+                SystemSet::on_update(GameState::InGame).with_system(update_playback_speed),
+            );
     }
 }
 
@@ -51,5 +54,19 @@ fn unpause_music(
 ) {
     if let Some(instance) = audio_instances.get_mut(&handle) {
         instance.resume(AudioTween::default());
+    }
+}
+
+fn update_playback_speed(
+    handle: Res<MusicInstanceHandle>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
+    stats: Res<GameStats>,
+) {
+    if stats.is_changed() {
+        let speed = 0.9 + stats.shapes_spawned as f64 * 0.005;
+
+        if let Some(instance) = audio_instances.get_mut(&handle) {
+            instance.set_playback_rate(speed, AudioTween::default());
+        }
     }
 }

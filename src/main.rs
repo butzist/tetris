@@ -1,5 +1,7 @@
 use bevy::{prelude::*, window::PresentMode};
+use bricks::LinesRemoved;
 use controls::ControlEvent;
+use shape::ShapeSpawned;
 
 mod audio;
 mod bricks;
@@ -12,6 +14,12 @@ pub enum GameState {
     InGame,
     Paused,
     GameOver,
+}
+
+#[derive(Default)]
+struct GameStats {
+    lines_removed: u32,
+    shapes_spawned: u32,
 }
 
 #[derive(Component, Clone, Debug)]
@@ -37,10 +45,12 @@ fn main() {
         .add_plugin(audio::AudioPlugin)
         .add_plugin(controls::ControlsPlugin)
         .add_plugin(tick::TickPlugin)
+        .init_resource::<GameStats>()
         .add_startup_system(setup)
         .add_system(bevy::window::close_on_esc)
         .add_system(pause_game)
         .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
+        .add_system_set(SystemSet::on_update(GameState::InGame).with_system(update_statistics))
         .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(show_paused))
         .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(hide_paused))
         .add_system_set(SystemSet::on_enter(GameState::GameOver).with_system(show_game_over))
@@ -142,4 +152,20 @@ fn hide_paused(mut query: Query<&mut Visibility, With<PausedText>>) {
     }
 }
 
-fn reset(mut _commands: Commands) {}
+fn update_statistics(
+    mut stats: ResMut<GameStats>,
+    mut shapes: EventReader<ShapeSpawned>,
+    mut lines: EventReader<LinesRemoved>,
+) {
+    for _ in shapes.iter() {
+        stats.shapes_spawned += 1;
+    }
+
+    for event in lines.iter() {
+        stats.lines_removed += **event as u32;
+    }
+}
+
+fn reset(mut commands: Commands) {
+    commands.insert_resource(GameStats::default())
+}

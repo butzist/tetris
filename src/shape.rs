@@ -15,11 +15,15 @@ struct Shape;
 #[derive(Component, Clone, Debug)]
 struct ShapeBrick;
 
+#[derive(Debug, Clone, Default)]
+pub struct ShapeSpawned;
+
 pub struct ShapePlugin;
 
 impl Plugin for ShapePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
+        app.add_event::<ShapeSpawned>()
+            .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
             .add_system_set(
                 SystemSet::on_update(GameState::InGame)
                     .with_system(check_game_over.before(move_shape))
@@ -60,6 +64,7 @@ fn move_shape(
     child_query: Query<(&Transform, &Sprite), (With<ShapeBrick>, Without<Shape>)>,
     mut control_events: EventReader<ControlEvent>,
     mut tick_events: EventReader<Tick>,
+    mut spawn_events: EventWriter<ShapeSpawned>,
     mut bricks: ResMut<Bricks>,
 ) {
     let commands = &mut commands;
@@ -90,6 +95,7 @@ fn move_shape(
                 shape_to_bricks(commands, bricks, &*transform, &children);
                 commands.entity(entity).despawn_recursive();
                 spawn_shape(commands);
+                spawn_events.send_default();
             }
         }
     }

@@ -14,11 +14,15 @@ pub struct Brick {
 #[derive(Default, Debug, Deref, DerefMut)]
 pub struct Bricks(pub HashMap<(i8, i8), Entity>);
 
+#[derive(Debug, Clone, Deref)]
+pub struct LinesRemoved(u8);
+
 pub struct BrickPlugin;
 
 impl Plugin for BrickPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Bricks>()
+        app.add_event::<LinesRemoved>()
+            .init_resource::<Bricks>()
             .register_type::<Brick>()
             .add_system_set(
                 SystemSet::on_update(GameState::InGame)
@@ -55,16 +59,26 @@ pub fn spawn_brick(commands: &mut Commands, bricks: &mut Bricks, brick: Brick, c
     bricks.0.insert((brick.x, brick.y), entity);
 }
 
-pub fn remove_lines(commands: Commands, bricks: ResMut<Bricks>) {
+pub fn remove_lines(
+    mut commands: Commands,
+    mut bricks: ResMut<Bricks>,
+    mut events: EventWriter<LinesRemoved>,
+) {
+    let mut removed_lines = 0;
+
     for y in 0..13 {
         if (-8..=8).all(|x| bricks.contains_key(&(x, y))) {
-            remove_line(commands, bricks, y);
-            return;
+            remove_line(&mut commands, &mut bricks, y);
+            removed_lines += 1;
         }
+    }
+
+    if removed_lines > 0 {
+        events.send(LinesRemoved(removed_lines))
     }
 }
 
-pub fn remove_line(mut commands: Commands, mut bricks: ResMut<Bricks>, y: i8) {
+pub fn remove_line(commands: &mut Commands, bricks: &mut Bricks, y: i8) {
     for x in -8..=8 {
         let coords = (x, y);
         let entity = bricks.remove(&coords);
