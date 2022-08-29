@@ -36,6 +36,7 @@ fn main() {
             resizable: false,
             title: "Tetris".into(),
             present_mode: PresentMode::Fifo,
+            canvas: Some("#bevy".into()),
             ..Default::default()
         })
         .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)))
