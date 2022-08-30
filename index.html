@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Tetris</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+</head>
+<body>
+    <h1>Tetr*s clone</h1>
+
+    <div class="bevy-instance">
+        <button id="button" onclick="start_game()">Load game</button>
+        <canvas id="bevy" width="850" height="650" alt="Tetris" style="display: none">
+        </canvas>    
+    </div>
+
+    <div>
+        <h3>Links</h3>
+
+        <ul>
+            <li><a href="https://github.com/butzist/tetris/">GitHub project</a></li>
+            <li><a href="https://github.com/butzist/tetris/blob/main/assets/sounds/CREDITS.md">Credits</a></li>
+        </ul>
+    </div>
+
+    <script type="module">
+        import init from "./tetris.js";
+
+        window.start_game = () => {
+            let canvas = document.getElementById("bevy");
+            canvas.style.display = "block";
+            canvas.focus();
+            document.getElementById("button").style.display = "none";
+            init().then(res => res.start());
+        }
+    </script>
+</body>
+</html>
