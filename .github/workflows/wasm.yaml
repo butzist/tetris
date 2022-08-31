@@ -11,16 +11,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           target: wasm32-unknown-unknown
-
-      - name: Install wasm-bindgen
-        uses: jetli/wasm-bindgen-action@v0.1.0
 
       - name: Cache
         uses: actions/cache@v3
@@ -34,9 +32,31 @@ jobs:
         run: |
           cargo build --release --no-default-features --target wasm32-unknown-unknown
 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: wasm
+          path: target/wasm32-unknown-unknown/release/tetris.wasm
+
+  dist:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install wasm-bindgen
+        uses: jetli/wasm-bindgen-action@v0.1.0
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: wasm
+
       - name: Build page
         run: |
-          wasm-bindgen --out-dir out --web target/wasm32-unknown-unknown/release/tetris.wasm
+          wasm-bindgen --out-dir out --web tetris.wasm
           cp index.html out/
           cp -r assets/ out/
 
@@ -46,8 +66,9 @@ jobs:
           path: out/
 
   deploy:
-    needs: build
+    needs: dist
     runs-on: ubuntu-latest
+
     permissions:
       pages: write
       id-token: write
