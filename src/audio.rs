@@ -1,4 +1,5 @@
 use bevy::{audio::*, prelude::*};
+use bevy_asset_loader::prelude::*;
 
 use crate::{
     bricks::LinesRemoved, controls::ControlEvent, shape::ShapeSpawned, GameState, GameStats,
@@ -8,6 +9,20 @@ pub struct AudioPlugin;
 
 #[derive(Deref, DerefMut)]
 struct MusicInstanceHandle(Handle<AudioSink>);
+
+#[derive(AssetCollection)]
+pub struct SoundAssets {
+    #[asset(path = "sounds/Crowander - Gypsy.ogg")]
+    music: Handle<AudioSource>,
+    #[asset(path = "sounds/gameover.ogg")]
+    gameover: Handle<AudioSource>,
+    #[asset(path = "sounds/rotate.ogg")]
+    rotate: Handle<AudioSource>,
+    #[asset(path = "sounds/drop.ogg")]
+    drop: Handle<AudioSource>,
+    #[asset(path = "sounds/lines.ogg")]
+    lines: Handle<AudioSource>,
+}
 
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
@@ -26,12 +41,12 @@ impl Plugin for AudioPlugin {
 
 fn play_music(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    assets: Res<SoundAssets>,
     audio: Res<Audio>,
     audio_sinks: Res<Assets<AudioSink>>,
 ) {
     let weak_handle = audio.play_with_settings(
-        asset_server.load("sounds/Crowander - Gypsy.ogg"),
+        assets.music.as_weak(),
         PlaybackSettings::LOOP.with_volume(0.5).with_speed(0.9),
     );
 
@@ -39,12 +54,12 @@ fn play_music(
     commands.insert_resource(MusicInstanceHandle(strong_handle));
 }
 
-fn game_over(asset_server: Res<AssetServer>, audio: Res<Audio>) {
-    audio.play(asset_server.load("sounds/gameover.ogg"));
+fn game_over(assets: Res<SoundAssets>, audio: Res<Audio>) {
+    audio.play(assets.gameover.as_weak());
 }
 
 fn sound_effects(
-    asset_server: Res<AssetServer>,
+    assets: Res<SoundAssets>,
     audio: Res<Audio>,
     mut controls: EventReader<ControlEvent>,
     mut shapes: EventReader<ShapeSpawned>,
@@ -60,20 +75,20 @@ fn sound_effects(
         .contains(c)
     }) {
         audio.play_with_settings(
-            asset_server.load("sounds/rotate.ogg"),
+            assets.rotate.as_weak(),
             PlaybackSettings::ONCE.with_volume(0.2),
         );
     }
 
     if shapes.iter().last().is_some() {
         audio.play_with_settings(
-            asset_server.load("sounds/drop.ogg"),
+            assets.drop.as_weak(),
             PlaybackSettings::ONCE.with_volume(0.4),
         );
     }
 
     if lines.iter().last().is_some() {
-        audio.play(asset_server.load("sounds/lines.ogg"));
+        audio.play(assets.lines.as_weak());
     }
 }
 

@@ -24,21 +24,17 @@ lto = "thin"
 [dependencies]
 rand = "0.8"
 ignore-result = "0.2"
+bevy_asset_loader = "0.12"
 
 [dependencies.bevy]
 version = "0.8"
 default-features = false
 features = [
   "render",
-  "animation",
   "bevy_asset",
   "bevy_audio",
-  "bevy_scene",
   "bevy_winit",
-  "bevy_gilrs",
   "png",
-  "hdr",
-  "filesystem_watcher",
   "x11",
   "vorbis"
 ]

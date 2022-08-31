@@ -1,4 +1,6 @@
+use audio::SoundAssets;
 use bevy::{prelude::*, window::PresentMode};
+use bevy_asset_loader::prelude::*;
 use bricks::LinesRemoved;
 use controls::ControlEvent;
 use shape::ShapeSpawned;
@@ -11,6 +13,7 @@ mod tick;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum GameState {
+    AssetLoading,
     InGame,
     Paused,
     GameOver,
@@ -28,6 +31,15 @@ struct GameOverText;
 #[derive(Component, Clone, Debug)]
 struct PausedText;
 
+#[derive(Component, Clone, Debug)]
+struct LoadingText;
+
+#[derive(AssetCollection)]
+pub struct FontAssets {
+    #[asset(path = "fonts/Baloo2-ExtraBold.ttf")]
+    status: Handle<Font>,
+}
+
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
@@ -40,7 +52,12 @@ fn main() {
             ..Default::default()
         })
         .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)))
-        .add_state(GameState::InGame)
+        .add_state(GameState::AssetLoading)
+        .add_loading_state(
+            LoadingState::new(GameState::AssetLoading)
+                .continue_to_state(GameState::InGame)
+                .with_collection::<SoundAssets>(),
+        )
         .add_plugins(DefaultPlugins)
         .add_plugin(bricks::BrickPlugin)
         .add_plugin(shape::ShapePlugin)
@@ -48,9 +65,11 @@ fn main() {
         .add_plugin(controls::ControlsPlugin)
         .add_plugin(tick::TickPlugin)
         .init_resource::<GameStats>()
+        .init_collection::<FontAssets>()
         .add_startup_system(setup)
         .add_system(bevy::window::close_on_esc)
         .add_system(pause_game)
+        .add_system_set(SystemSet::on_exit(GameState::AssetLoading).with_system(hide_loading))
         .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
         .add_system_set(SystemSet::on_update(GameState::InGame).with_system(update_statistics))
         .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(show_paused))
@@ -60,58 +79,48 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut commands: Commands, assets: Res<FontAssets>) {
     commands.spawn_bundle(Camera2dBundle::default());
 
+    let text_style = TextStyle {
+        font: assets.status.as_weak(),
+        font_size: 70.0,
+        color: Color::WHITE,
+    };
+
+    let text_transform = Transform {
+        translation: Vec3::new(0., 0., 100.),
+        ..default()
+    };
+
     commands
-        .spawn_bundle(
-            TextBundle::from_section(
-                "Game over - press SPACE",
-                TextStyle {
-                    font: asset_server.load("fonts/Baloo2-ExtraBold.ttf"),
-                    font_size: 70.0,
-                    color: Color::WHITE,
-                },
-            )
-            .with_text_alignment(TextAlignment::TOP_CENTER)
-            .with_style(Style {
-                align_self: AlignSelf::FlexEnd,
-                position_type: PositionType::Absolute,
-                position: UiRect {
-                    bottom: Val::Px(5.0),
-                    right: Val::Px(15.0),
-                    ..default()
-                },
-                ..default()
-            }),
-        )
+        .spawn_bundle(Text2dBundle {
+            text: Text::from_section("Game over - press SPACE", text_style.clone())
+                .with_alignment(TextAlignment::CENTER),
+            transform: text_transform,
+            ..default()
+        })
         .insert(Visibility { is_visible: false })
         .insert(GameOverText);
 
     commands
-        .spawn_bundle(
-            TextBundle::from_section(
-                "Game paused - press SPACE",
-                TextStyle {
-                    font: asset_server.load("fonts/Baloo2-ExtraBold.ttf"),
-                    font_size: 70.0,
-                    color: Color::WHITE,
-                },
-            )
-            .with_text_alignment(TextAlignment::TOP_CENTER)
-            .with_style(Style {
-                align_self: AlignSelf::FlexEnd,
-                position_type: PositionType::Absolute,
-                position: UiRect {
-                    bottom: Val::Px(5.0),
-                    right: Val::Px(15.0),
-                    ..default()
-                },
-                ..default()
-            }),
-        )
+        .spawn_bundle(Text2dBundle {
+            text: Text::from_section("Game paused - press SPACE", text_style.clone())
+                .with_alignment(TextAlignment::CENTER),
+            transform: text_transform,
+            ..default()
+        })
         .insert(Visibility { is_visible: false })
         .insert(PausedText);
+
+    commands
+        .spawn_bundle(Text2dBundle {
+            text: Text::from_section("Loading...", text_style.clone())
+                .with_alignment(TextAlignment::CENTER),
+            transform: text_transform,
+            ..default()
+        })
+        .insert(LoadingText);
 }
 
 fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<State<GameState>>) {
@@ -126,8 +135,14 @@ fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<S
             GameState::GameOver => state
                 .replace(GameState::InGame)
                 .expect("cannot change state"),
+            GameState::AssetLoading => (),
         }
     }
+}
+
+fn hide_loading(mut commands: Commands, query: Query<Entity, With<LoadingText>>) {
+    let entity = query.single();
+    commands.entity(entity).despawn();
 }
 
 fn show_game_over(mut query: Query<&mut Visibility, With<GameOverText>>) {
