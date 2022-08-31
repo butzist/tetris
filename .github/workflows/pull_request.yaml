@@ -22,9 +22,12 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
             target/
-            ~/.cargo/registry/
-          key: build-wasm-dev
+          key: wasm-dev-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build WASM binary
         run: |
