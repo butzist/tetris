@@ -26,13 +26,7 @@ struct GameStats {
 }
 
 #[derive(Component, Clone, Debug)]
-struct GameOverText;
-
-#[derive(Component, Clone, Debug)]
-struct PausedText;
-
-#[derive(Component, Clone, Debug)]
-struct LoadingText;
+struct StatusText;
 
 #[derive(AssetCollection)]
 pub struct FontAssets {
@@ -69,13 +63,15 @@ fn main() {
         .add_startup_system(setup)
         .add_system(bevy::window::close_on_esc)
         .add_system(pause_game)
-        .add_system_set(SystemSet::on_exit(GameState::AssetLoading).with_system(hide_loading))
-        .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
+        .add_system_set(
+            SystemSet::on_enter(GameState::InGame)
+                .with_system(reset)
+                .with_system(hide_status),
+        )
         .add_system_set(SystemSet::on_update(GameState::InGame).with_system(update_statistics))
         .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(show_paused))
-        .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(hide_paused))
+        .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(hide_status))
         .add_system_set(SystemSet::on_enter(GameState::GameOver).with_system(show_game_over))
-        .add_system_set(SystemSet::on_exit(GameState::GameOver).with_system(hide_game_over))
         .run();
 }
 
@@ -95,32 +91,13 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
 
     commands
         .spawn_bundle(Text2dBundle {
-            text: Text::from_section("Game over - press SPACE", text_style.clone())
-                .with_alignment(TextAlignment::CENTER),
-            transform: text_transform,
-            ..default()
-        })
-        .insert(Visibility { is_visible: false })
-        .insert(GameOverText);
-
-    commands
-        .spawn_bundle(Text2dBundle {
-            text: Text::from_section("Game paused - press SPACE", text_style.clone())
-                .with_alignment(TextAlignment::CENTER),
-            transform: text_transform,
-            ..default()
-        })
-        .insert(Visibility { is_visible: false })
-        .insert(PausedText);
-
-    commands
-        .spawn_bundle(Text2dBundle {
             text: Text::from_section("Loading...", text_style.clone())
                 .with_alignment(TextAlignment::CENTER),
             transform: text_transform,
             ..default()
         })
-        .insert(LoadingText);
+        .insert(Visibility { is_visible: true })
+        .insert(StatusText);
 }
 
 fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<State<GameState>>) {
@@ -140,32 +117,23 @@ fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<S
     }
 }
 
-fn hide_loading(mut commands: Commands, query: Query<Entity, With<LoadingText>>) {
-    let entity = query.single();
-    commands.entity(entity).despawn();
-}
-
-fn show_game_over(mut query: Query<&mut Visibility, With<GameOverText>>) {
-    for mut visibility in &mut query {
-        visibility.is_visible = true;
-    }
-}
-
-fn hide_game_over(mut query: Query<&mut Visibility, With<GameOverText>>) {
+fn hide_status(mut query: Query<&mut Visibility, With<StatusText>>) {
     for mut visibility in &mut query {
         visibility.is_visible = false;
     }
 }
 
-fn show_paused(mut query: Query<&mut Visibility, With<PausedText>>) {
-    for mut visibility in &mut query {
+fn show_paused(mut query: Query<(&mut Text, &mut Visibility), With<StatusText>>) {
+    for (mut text, mut visibility) in &mut query {
+        text.sections[0].value = "Game paused - press SPACE".into();
         visibility.is_visible = true;
     }
 }
 
-fn hide_paused(mut query: Query<&mut Visibility, With<PausedText>>) {
-    for mut visibility in &mut query {
-        visibility.is_visible = false;
+fn show_game_over(mut query: Query<(&mut Text, &mut Visibility), With<StatusText>>) {
+    for (mut text, mut visibility) in &mut query {
+        text.sections[0].value = "Game over - press SPACE".into();
+        visibility.is_visible = true;
     }
 }
 
