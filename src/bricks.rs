@@ -1,8 +1,8 @@
 use bevy::{prelude::*, time::FixedTimestep, utils::hashbrown::HashMap};
 
-use crate::GameState;
+use crate::{GameState, BRICK_COLS_RANGE, BRICK_ROWS, BRICK_ROWS_RANGE};
 
-pub const BRICK_SIZE: f32 = 50.;
+pub const BRICK_SIZE: f32 = 30.;
 
 #[derive(Component, Default, Clone, Debug, Reflect)]
 #[reflect(Component)]
@@ -34,25 +34,39 @@ impl Plugin for BrickPlugin {
     }
 }
 
-pub fn spawn_brick(commands: &mut Commands, bricks: &mut Bricks, brick: Brick, color: Color) {
-    let entity = commands
-        .spawn_bundle(SpriteBundle {
-            sprite: Sprite { color, ..default() },
-            transform: Transform {
-                translation: Vec3 {
-                    x: brick.x as f32 * BRICK_SIZE,
-                    y: brick.y as f32 * BRICK_SIZE - 300.,
-                    z: 0.,
-                },
-                scale: Vec3 {
-                    x: 45.,
-                    y: 45.,
-                    z: 1.,
-                },
-                ..default()
+pub fn to_brick_coordinates(translation: Vec3) -> (i8, i8) {
+    let x = (translation.x / BRICK_SIZE).round() as i8;
+    let y = ((translation.y + BRICK_ROWS as f32 / 2. * BRICK_SIZE) / BRICK_SIZE).round() as i8;
+    (x, y)
+}
+
+pub fn to_brick_translation(x: i8, y: i8) -> Vec3 {
+    Vec3 {
+        x: x as f32 * BRICK_SIZE,
+        y: (y as f32 - (BRICK_ROWS as f32 / 2.)) * BRICK_SIZE,
+        z: 1.,
+    }
+}
+
+pub fn brick_bundle(translation: Vec3, color: Color) -> SpriteBundle {
+    SpriteBundle {
+        sprite: Sprite { color, ..default() },
+        transform: Transform {
+            translation,
+            scale: Vec3 {
+                x: BRICK_SIZE * 0.9,
+                y: BRICK_SIZE * 0.9,
+                z: 1.,
             },
             ..default()
-        })
+        },
+        ..default()
+    }
+}
+
+pub fn spawn_brick(commands: &mut Commands, bricks: &mut Bricks, brick: Brick, color: Color) {
+    let entity = commands
+        .spawn_bundle(brick_bundle(to_brick_translation(brick.x, brick.y), color))
         .insert(brick.clone())
         .id();
 
@@ -70,8 +84,11 @@ pub fn remove_lines(
 
     let mut removed_lines = 0;
 
-    for y in 0..13 {
-        if (-8..=8).all(|x| bricks.contains_key(&(x, y))) {
+    for y in BRICK_ROWS_RANGE {
+        if BRICK_COLS_RANGE
+            .clone()
+            .all(|x| bricks.contains_key(&(x, y)))
+        {
             remove_line(&mut commands, &mut bricks, y);
             removed_lines += 1;
         }
@@ -83,7 +100,7 @@ pub fn remove_lines(
 }
 
 pub fn remove_line(commands: &mut Commands, bricks: &mut Bricks, y: i8) {
-    for x in -8..=8 {
+    for x in BRICK_COLS_RANGE {
         let coords = (x, y);
         let entity = bricks.remove(&coords);
 
@@ -105,12 +122,19 @@ pub fn move_lines_down(
         *done = true;
     }
 
-    let mut from_ys = (0..13).into_iter();
-    for to_y in 0..13 {
-        if (-8..=8).all(|x| !bricks.contains_key(&(x, to_y))) {
+    let mut from_ys = BRICK_ROWS_RANGE.into_iter();
+    for to_y in BRICK_ROWS_RANGE {
+        if BRICK_COLS_RANGE
+            .clone()
+            .all(|x| !bricks.contains_key(&(x, to_y)))
+        {
             while let Some(from_y) = from_ys.next() {
-                if from_y > to_y && (-8..=8).any(|x| bricks.contains_key(&(x, from_y))) {
-                    for x in -8..=8 {
+                if from_y > to_y
+                    && BRICK_COLS_RANGE
+                        .clone()
+                        .any(|x| bricks.contains_key(&(x, from_y)))
+                {
+                    for x in BRICK_COLS_RANGE {
                         let coords = (x, from_y);
                         let entity = bricks.remove(&coords);
 
@@ -124,7 +148,7 @@ pub fn move_lines_down(
 
                             bricks.insert(new_coords, entity);
                             brick.y = to_y;
-                            transform.translation.y = brick.y as f32 * BRICK_SIZE - 300.;
+                            transform.translation = to_brick_translation(brick.x, brick.y);
                         }
                     }
                     break; // proceed to next empty line
@@ -140,5 +164,49 @@ pub fn reset(mut commands: Commands, mut query: Query<Entity, With<Brick>>) {
 
     for entity in &mut query {
         commands.entity(entity).despawn();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::BRICK_ROWS;
+    use bevy::prelude::*;
+
+    use super::{to_brick_coordinates, to_brick_translation};
+
+    #[test]
+    fn screen_center() {
+        let translation = to_brick_translation(0, BRICK_ROWS / 2);
+
+        assert_eq!(
+            translation,
+            Vec3 {
+                x: 0.,
+                y: 0.,
+                z: 1.
+            }
+        );
+    }
+
+    #[test]
+    fn top() {
+        let translation = to_brick_translation(0, BRICK_ROWS);
+
+        assert_eq!(
+            translation,
+            Vec3 {
+                x: 0.,
+                y: 300.,
+                z: 1.
+            }
+        );
+    }
+
+    #[test]
+    fn convert_and_back() {
+        let translation = to_brick_translation(-3, 7);
+        let coords = to_brick_coordinates(translation);
+
+        assert_eq!(coords, (-3, 7));
     }
 }

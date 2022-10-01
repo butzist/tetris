@@ -11,6 +11,14 @@ mod controls;
 mod shape;
 mod tick;
 
+const BRICK_ROWS: i8 = 20;
+const BRICK_ROWS_RANGE: std::ops::Range<i8> = 0..BRICK_ROWS;
+const BRICK_COLS: i8 = 11;
+const BRICK_COLS_RANGE: std::ops::RangeInclusive<i8> = {
+    let half = (BRICK_COLS - 1) / 2;
+    -half..=half
+};
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum GameState {
     AssetLoading,
@@ -37,8 +45,8 @@ pub struct FontAssets {
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            height: 650.,
-            width: 850.,
+            height: 800.,
+            width: 1000.,
             resizable: false,
             title: "Tetris".into(),
             present_mode: PresentMode::Fifo,

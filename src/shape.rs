@@ -3,10 +3,13 @@ use ignore_result::Ignore;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    bricks::{spawn_brick, Brick, Bricks, BRICK_SIZE},
+    bricks::{
+        brick_bundle, spawn_brick, to_brick_coordinates, to_brick_translation, Brick, Bricks,
+        BRICK_SIZE,
+    },
     controls::ControlEvent,
     tick::Tick,
-    GameState,
+    GameState, BRICK_COLS_RANGE, BRICK_ROWS,
 };
 
 #[derive(Component, Default, Clone, Debug)]
@@ -151,7 +154,7 @@ fn shape_to_bricks(
 ) {
     for (&child, sprite) in children {
         let child_position = transform.mul_transform(child);
-        let coords = to_brick_coordinates(child_position);
+        let coords = to_brick_coordinates(child_position.translation);
         spawn_brick(
             commands,
             &mut *bricks,
@@ -166,10 +169,9 @@ fn shape_to_bricks(
 
 fn collides(parent_transform: &Transform, child_transform: &Transform, bricks: &Bricks) -> bool {
     let position = parent_transform.mul_transform(*child_transform);
+    let (x, y) = to_brick_coordinates(position.translation.clone());
 
-    let (x, y) = to_brick_coordinates(position);
-
-    if x > 8 || x < -8 {
+    if !BRICK_COLS_RANGE.contains(&x) {
         return true;
     }
 
@@ -184,25 +186,13 @@ fn collides(parent_transform: &Transform, child_transform: &Transform, bricks: &
     false
 }
 
-fn to_brick_coordinates(position: Transform) -> (i8, i8) {
-    let x = (position.translation.x / BRICK_SIZE).round() as i8;
-    let y = ((position.translation.y + 300.) / BRICK_SIZE).round() as i8;
-    (x, y)
-}
-
 fn spawn_shape(commands: &mut Commands) {
-    let origin = Transform {
-        translation: Vec3 {
-            x: 0.,
-            y: 300.,
-            z: 1.,
-        },
-        ..default()
-    };
-
     commands
         .spawn_bundle(SpatialBundle {
-            transform: origin,
+            transform: Transform {
+                translation: to_brick_translation(0, BRICK_ROWS),
+                ..default()
+            },
             ..default()
         })
         .insert(Shape {})
@@ -210,23 +200,10 @@ fn spawn_shape(commands: &mut Commands) {
             let color = Color::hsl(thread_rng().gen_range(0.0..360.0), 1.0, 0.6);
             let make_brick = |x: i8, y: i8| {
                 parent
-                    .spawn_bundle(SpriteBundle {
-                        sprite: Sprite { color, ..default() },
-                        transform: Transform {
-                            translation: Vec3 {
-                                x: x as f32 * BRICK_SIZE,
-                                y: y as f32 * BRICK_SIZE,
-                                z: 0.,
-                            },
-                            scale: Vec3 {
-                                x: 45.,
-                                y: 45.,
-                                z: 1.,
-                            },
-                            ..default()
-                        },
-                        ..default()
-                    })
+                    .spawn_bundle(brick_bundle(
+                        Vec3::new(x as f32 * BRICK_SIZE, y as f32 * BRICK_SIZE, 1.),
+                        color,
+                    ))
                     .insert(ShapeBrick);
             };
 
