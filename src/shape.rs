@@ -97,6 +97,7 @@ fn move_shape(
                 commands.entity(entity).despawn_recursive();
                 spawn_shape(commands);
                 spawn_events.send_default();
+                return;
             }
         }
     }
