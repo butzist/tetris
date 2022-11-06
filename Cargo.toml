@@ -27,17 +27,9 @@ ignore-result = "0.2"
 bevy_asset_loader = "0.12"
 
 [dependencies.bevy]
-version = "0.8"
+version = "0.8.1"
 default-features = false
-features = [
-  "render",
-  "bevy_asset",
-  "bevy_audio",
-  "bevy_winit",
-  "png",
-  "x11",
-  "vorbis"
-]
+features = ["render", "bevy_asset", "bevy_audio", "bevy_winit", "png", "x11", "vorbis"]
 
 [features]
 default = ["fast-compile"]
