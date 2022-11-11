@@ -1,8 +1,8 @@
 use bevy::{prelude::*, time::FixedTimestep, utils::hashbrown::HashMap};
 
-use crate::{GameState, BRICK_COLS_RANGE, BRICK_ROWS, BRICK_ROWS_RANGE};
-
-pub const BRICK_SIZE: f32 = 30.;
+use crate::{
+    GameState, BRICK_COLS_RANGE, BRICK_ROWS, BRICK_ROWS_RANGE, BRICK_SIZE, OFFSET_X, OFFSET_Y,
+};
 
 #[derive(Component, Default, Clone, Debug, Reflect)]
 #[reflect(Component)]
@@ -35,15 +35,16 @@ impl Plugin for BrickPlugin {
 }
 
 pub fn to_brick_coordinates(translation: Vec3) -> (i8, i8) {
-    let x = (translation.x / BRICK_SIZE).round() as i8;
-    let y = ((translation.y + BRICK_ROWS as f32 / 2. * BRICK_SIZE) / BRICK_SIZE).round() as i8;
+    let x = ((translation.x - OFFSET_X) / BRICK_SIZE).round() as i8;
+    let y = (((translation.y - OFFSET_Y) + BRICK_ROWS as f32 / 2. * BRICK_SIZE) / BRICK_SIZE)
+        .round() as i8;
     (x, y)
 }
 
 pub fn to_brick_translation(x: i8, y: i8) -> Vec3 {
     Vec3 {
-        x: x as f32 * BRICK_SIZE,
-        y: (y as f32 - (BRICK_ROWS as f32 / 2.)) * BRICK_SIZE,
+        x: x as f32 * BRICK_SIZE + OFFSET_X,
+        y: (y as f32 - (BRICK_ROWS as f32 / 2.)) * BRICK_SIZE + OFFSET_Y,
         z: 1.,
     }
 }

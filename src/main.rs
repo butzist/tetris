@@ -10,7 +10,11 @@ mod bricks;
 mod controls;
 mod shape;
 mod tick;
+mod ui;
 
+const BRICK_SIZE: f32 = 30.;
+const OFFSET_X: f32 = 0.;
+const OFFSET_Y: f32 = 0.;
 const BRICK_ROWS: i8 = 20;
 const BRICK_ROWS_RANGE: std::ops::Range<i8> = 0..BRICK_ROWS;
 const BRICK_COLS: i8 = 11;
@@ -33,15 +37,6 @@ struct GameStats {
     shapes_spawned: u32,
 }
 
-#[derive(Component, Clone, Debug)]
-struct StatusText;
-
-#[derive(AssetCollection)]
-pub struct FontAssets {
-    #[asset(path = "fonts/Baloo2-ExtraBold.ttf")]
-    status: Handle<Font>,
-}
-
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
@@ -53,7 +48,6 @@ fn main() {
             canvas: Some("#bevy".into()),
             ..Default::default()
         })
-        .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)))
         .add_state(GameState::AssetLoading)
         .add_loading_state(
             LoadingState::new(GameState::AssetLoading)
@@ -61,51 +55,23 @@ fn main() {
                 .with_collection::<SoundAssets>(),
         )
         .add_plugins(DefaultPlugins)
+        .add_plugin(ui::UiPlugin)
         .add_plugin(bricks::BrickPlugin)
         .add_plugin(shape::ShapePlugin)
         .add_plugin(audio::AudioPlugin)
         .add_plugin(controls::ControlsPlugin)
         .add_plugin(tick::TickPlugin)
         .init_resource::<GameStats>()
-        .init_collection::<FontAssets>()
         .add_startup_system(setup)
         .add_system(bevy::window::close_on_esc)
         .add_system(pause_game)
-        .add_system_set(
-            SystemSet::on_enter(GameState::InGame)
-                .with_system(reset)
-                .with_system(hide_status),
-        )
+        .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
         .add_system_set(SystemSet::on_update(GameState::InGame).with_system(update_statistics))
-        .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(show_paused))
-        .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(hide_status))
-        .add_system_set(SystemSet::on_enter(GameState::GameOver).with_system(show_game_over))
         .run();
 }
 
-fn setup(mut commands: Commands, assets: Res<FontAssets>) {
+fn setup(mut commands: Commands) {
     commands.spawn_bundle(Camera2dBundle::default());
-
-    let text_style = TextStyle {
-        font: assets.status.as_weak(),
-        font_size: 70.0,
-        color: Color::WHITE,
-    };
-
-    let text_transform = Transform {
-        translation: Vec3::new(0., 0., 100.),
-        ..default()
-    };
-
-    commands
-        .spawn_bundle(Text2dBundle {
-            text: Text::from_section("Loading...", text_style.clone())
-                .with_alignment(TextAlignment::CENTER),
-            transform: text_transform,
-            ..default()
-        })
-        .insert(Visibility { is_visible: true })
-        .insert(StatusText);
 }
 
 fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<State<GameState>>) {
@@ -122,26 +88,6 @@ fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<S
                 .expect("cannot change state"),
             GameState::AssetLoading => (),
         }
-    }
-}
-
-fn hide_status(mut query: Query<&mut Visibility, With<StatusText>>) {
-    for mut visibility in &mut query {
-        visibility.is_visible = false;
-    }
-}
-
-fn show_paused(mut query: Query<(&mut Text, &mut Visibility), With<StatusText>>) {
-    for (mut text, mut visibility) in &mut query {
-        text.sections[0].value = "Game paused - press SPACE".into();
-        visibility.is_visible = true;
-    }
-}
-
-fn show_game_over(mut query: Query<(&mut Text, &mut Visibility), With<StatusText>>) {
-    for (mut text, mut visibility) in &mut query {
-        text.sections[0].value = "Game over - press SPACE".into();
-        visibility.is_visible = true;
     }
 }
 

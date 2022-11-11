@@ -5,11 +5,10 @@ use rand::{thread_rng, Rng};
 use crate::{
     bricks::{
         brick_bundle, spawn_brick, to_brick_coordinates, to_brick_translation, Brick, Bricks,
-        BRICK_SIZE,
     },
     controls::ControlEvent,
     tick::Tick,
-    GameState, BRICK_COLS_RANGE, BRICK_ROWS,
+    GameState, BRICK_COLS_RANGE, BRICK_ROWS, BRICK_SIZE,
 };
 
 #[derive(Component, Default, Clone, Debug)]
