@@ -33,8 +33,17 @@ pub enum GameState {
 
 #[derive(Default)]
 struct GameStats {
-    lines_removed: u32,
-    shapes_spawned: u32,
+    lines_removed: LineStats,
+    shapes_spawned: usize,
+}
+
+#[derive(Default)]
+struct LineStats([usize; 4]);
+
+impl LineStats {
+    fn add(&mut self, lines: usize) {
+        self.0[lines - 1] += 1;
+    }
 }
 
 fn main() {
@@ -101,7 +110,7 @@ fn update_statistics(
     }
 
     for event in lines.iter() {
-        stats.lines_removed += **event as u32;
+        stats.lines_removed.add(**event as usize);
     }
 }
 
