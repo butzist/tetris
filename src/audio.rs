@@ -7,10 +7,10 @@ use crate::{
 
 pub struct AudioPlugin;
 
-#[derive(Deref, DerefMut)]
+#[derive(Resource, Deref, DerefMut)]
 struct MusicInstanceHandle(Handle<AudioSink>);
 
-#[derive(AssetCollection)]
+#[derive(Resource, AssetCollection)]
 pub struct SoundAssets {
     #[asset(path = "sounds/Crowander - Gypsy.ogg")]
     music: Handle<AudioSource>,
@@ -46,7 +46,7 @@ fn play_music(
     audio_sinks: Res<Assets<AudioSink>>,
 ) {
     let weak_handle = audio.play_with_settings(
-        assets.music.as_weak(),
+        assets.music.cast_weak(),
         PlaybackSettings::LOOP.with_volume(0.5).with_speed(0.9),
     );
 
@@ -55,7 +55,7 @@ fn play_music(
 }
 
 fn game_over(assets: Res<SoundAssets>, audio: Res<Audio>) {
-    audio.play(assets.gameover.as_weak());
+    audio.play(assets.gameover.cast_weak());
 }
 
 fn sound_effects(
@@ -75,20 +75,20 @@ fn sound_effects(
         .contains(c)
     }) {
         audio.play_with_settings(
-            assets.rotate.as_weak(),
+            assets.rotate.cast_weak(),
             PlaybackSettings::ONCE.with_volume(0.2),
         );
     }
 
     if shapes.iter().last().is_some() {
         audio.play_with_settings(
-            assets.drop.as_weak(),
+            assets.drop.cast_weak(),
             PlaybackSettings::ONCE.with_volume(0.4),
         );
     }
 
     if lines.iter().last().is_some() {
-        audio.play(assets.lines.as_weak());
+        audio.play(assets.lines.cast_weak());
     }
 }
 

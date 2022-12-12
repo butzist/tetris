@@ -11,7 +11,7 @@ struct StatusText;
 #[derive(Component, Clone, Debug)]
 pub struct StatisticsText;
 
-#[derive(AssetCollection)]
+#[derive(Resource, AssetCollection)]
 pub struct FontAssets {
     #[asset(path = "fonts/Baloo2-ExtraBold.ttf")]
     status: Handle<Font>,
@@ -33,28 +33,28 @@ impl Plugin for UiPlugin {
 
 fn setup(mut commands: Commands, assets: Res<FontAssets>) {
     commands
-        .spawn_bundle(NodeBundle {
+        .spawn(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
                 flex_direction: FlexDirection::Row,
                 ..default()
             },
-            color: Color::NONE.into(),
+            background_color: Color::NONE.into(),
             ..default()
         })
         .with_children(|parent| {
-            parent.spawn_bundle(NodeBundle {
+            parent.spawn(NodeBundle {
                 style: Style {
                     size: Size::new(Val::Percent(0.0), Val::Percent(100.0)),
                     flex_grow: 1.0,
                     ..default()
                 },
-                color: UI_BG_COLOR.into(),
+                background_color: UI_BG_COLOR.into(),
                 ..default()
             });
 
             parent
-                .spawn_bundle(NodeBundle {
+                .spawn(NodeBundle {
                     style: Style {
                         size: Size::new(
                             Val::Px(BRICK_SIZE * BRICK_COLS as f32 + 10.),
@@ -63,22 +63,22 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
                         flex_direction: FlexDirection::Column,
                         ..default()
                     },
-                    color: Color::NONE.into(),
+                    background_color: Color::NONE.into(),
                     ..default()
                 })
                 .with_children(|parent| {
-                    parent.spawn_bundle(NodeBundle {
+                    parent.spawn(NodeBundle {
                         style: Style {
                             size: Size::new(Val::Percent(100.0), Val::Percent(0.0)),
                             flex_grow: 1.0,
                             ..default()
                         },
-                        color: UI_BG_COLOR.into(),
+                        background_color: UI_BG_COLOR.into(),
                         ..default()
                     });
 
                     parent
-                        .spawn_bundle(NodeBundle {
+                        .spawn(NodeBundle {
                             style: Style {
                                 size: Size::new(
                                     Val::Percent(100.),
@@ -89,16 +89,16 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
                                 justify_content: JustifyContent::Center,
                                 ..default()
                             },
-                            color: Color::NONE.into(),
+                            background_color: Color::NONE.into(),
                             ..default()
                         })
                         .with_children(|parent| {
                             parent
-                                .spawn_bundle(
+                                .spawn(
                                     TextBundle::from_section(
                                         "Loading...",
                                         TextStyle {
-                                            font: assets.status.as_weak(),
+                                            font: assets.status.cast_weak(),
                                             font_size: 60.0,
                                             color: Color::WHITE,
                                         },
@@ -113,19 +113,19 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
                                 .insert(StatusText);
                         });
 
-                    parent.spawn_bundle(NodeBundle {
+                    parent.spawn(NodeBundle {
                         style: Style {
                             size: Size::new(Val::Percent(100.0), Val::Percent(0.0)),
                             flex_grow: 1.0,
                             ..default()
                         },
-                        color: UI_BG_COLOR.into(),
+                        background_color: UI_BG_COLOR.into(),
                         ..default()
                     });
                 });
 
             parent
-                .spawn_bundle(NodeBundle {
+                .spawn(NodeBundle {
                     style: Style {
                         size: Size::new(Val::Percent(0.0), Val::Percent(100.0)),
                         flex_grow: 1.0,
@@ -133,16 +133,16 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
                         justify_content: JustifyContent::Center,
                         ..default()
                     },
-                    color: UI_BG_COLOR.into(),
+                    background_color: UI_BG_COLOR.into(),
                     ..default()
                 })
                 .with_children(|parent| {
                     parent
-                        .spawn_bundle(
+                        .spawn(
                             TextBundle::from_section(
                                 "",
                                 TextStyle {
-                                    font: assets.status.as_weak(),
+                                    font: assets.status.cast_weak(),
                                     font_size: 30.0,
                                     color: Color::WHITE,
                                 },

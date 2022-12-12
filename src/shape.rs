@@ -188,7 +188,7 @@ fn collides(parent_transform: &Transform, child_transform: &Transform, bricks: &
 
 fn spawn_shape(commands: &mut Commands) {
     commands
-        .spawn_bundle(SpatialBundle {
+        .spawn(SpatialBundle {
             transform: Transform {
                 translation: to_brick_translation(0, BRICK_ROWS),
                 ..default()
@@ -200,7 +200,7 @@ fn spawn_shape(commands: &mut Commands) {
             let color = Color::hsl(thread_rng().gen_range(0.0..360.0), 1.0, 0.6);
             let make_brick = |x: i8, y: i8| {
                 parent
-                    .spawn_bundle(brick_bundle(
+                    .spawn(brick_bundle(
                         Vec3::new(x as f32 * BRICK_SIZE, y as f32 * BRICK_SIZE, 1.),
                         color,
                     ))

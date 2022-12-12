@@ -41,13 +41,13 @@ fn controls(
     let mut handle_repeating_key = |key_code: KeyCode, control_event: ControlEvent, delay: f32| {
         if keys.just_pressed(key_code) {
             events.send(control_event);
-            *repeat_timer = Timer::from_seconds(delay, false);
+            *repeat_timer = Timer::from_seconds(delay, TimerMode::Once);
             true
         } else if keys.pressed(key_code) {
             repeat_timer.tick(time.delta());
             if repeat_timer.just_finished() {
                 events.send(control_event);
-                *repeat_timer = Timer::from_seconds(0.1, false);
+                *repeat_timer = Timer::from_seconds(0.1, TimerMode::Once);
             }
             true
         } else {

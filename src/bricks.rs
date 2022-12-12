@@ -11,7 +11,7 @@ pub struct Brick {
     pub y: i8,
 }
 
-#[derive(Default, Debug, Deref, DerefMut)]
+#[derive(Resource, Default, Debug, Deref, DerefMut)]
 pub struct Bricks(pub HashMap<(i8, i8), Entity>);
 
 #[derive(Debug, Clone, Deref)]
@@ -67,7 +67,7 @@ pub fn brick_bundle(translation: Vec3, color: Color) -> SpriteBundle {
 
 pub fn spawn_brick(commands: &mut Commands, bricks: &mut Bricks, brick: Brick, color: Color) {
     let entity = commands
-        .spawn_bundle(brick_bundle(to_brick_translation(brick.x, brick.y), color))
+        .spawn(brick_bundle(to_brick_translation(brick.x, brick.y), color))
         .insert(brick.clone())
         .id();
 

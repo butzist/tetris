@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::{controls::ControlEvent, GameState, GameStats};
 
-#[derive(Debug)]
+#[derive(Resource, Debug)]
 pub struct TickTimer {
     timer: Timer,
     in_speedup: bool,
@@ -13,7 +13,7 @@ pub struct TickTimer {
 impl Default for TickTimer {
     fn default() -> Self {
         Self {
-            timer: Timer::from_seconds(1.0, true),
+            timer: Timer::from_seconds(1.0, TimerMode::Repeating),
             in_speedup: false,
         }
     }

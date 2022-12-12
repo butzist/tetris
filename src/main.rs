@@ -31,7 +31,7 @@ pub enum GameState {
     GameOver,
 }
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 struct GameStats {
     lines_removed: LineStats,
     shapes_spawned: usize,
@@ -48,22 +48,24 @@ impl LineStats {
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            height: 800.,
-            width: 1000.,
-            resizable: false,
-            title: "Tetris".into(),
-            present_mode: PresentMode::Fifo,
-            canvas: Some("#bevy".into()),
-            ..Default::default()
-        })
         .add_state(GameState::AssetLoading)
         .add_loading_state(
             LoadingState::new(GameState::AssetLoading)
                 .continue_to_state(GameState::InGame)
                 .with_collection::<SoundAssets>(),
         )
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                height: 800.,
+                width: 1000.,
+                resizable: false,
+                title: "Tetris".into(),
+                present_mode: PresentMode::Fifo,
+                canvas: Some("#bevy".into()),
+                ..Default::default()
+            },
+            ..Default::default()
+        }))
         .add_plugin(ui::UiPlugin)
         .add_plugin(bricks::BrickPlugin)
         .add_plugin(shape::ShapePlugin)
