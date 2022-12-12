@@ -1,5 +1,5 @@
 use audio::SoundAssets;
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{core_pipeline::bloom::BloomSettings, prelude::*, window::PresentMode};
 use bevy_asset_loader::prelude::*;
 use bricks::LinesRemoved;
 use controls::ControlEvent;
@@ -54,6 +54,7 @@ fn main() {
                 .continue_to_state(GameState::InGame)
                 .with_collection::<SoundAssets>(),
         )
+        .insert_resource(Msaa { samples: 1 })
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             window: WindowDescriptor {
                 height: 800.,
@@ -82,7 +83,24 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    if cfg!(target_arch = "wasm32") {
+        // wgpu does not seem to support bloom on WASM
+        commands.spawn(Camera2dBundle::default());
+    } else {
+        commands.spawn((
+            Camera2dBundle {
+                camera: Camera {
+                    hdr: true,
+                    ..default()
+                },
+                ..default()
+            },
+            BloomSettings {
+                threshold: 0.5,
+                ..Default::default()
+            },
+        ));
+    }
 }
 
 fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<State<GameState>>) {
