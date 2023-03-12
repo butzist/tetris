@@ -1,4 +1,4 @@
-use bevy::{prelude::*, time::FixedTimestep, utils::hashbrown::HashMap};
+use bevy::{prelude::*, utils::hashbrown::HashMap};
 
 use crate::{
     GameState, BRICK_COLS_RANGE, BRICK_ROWS, BRICK_ROWS_RANGE, BRICK_SIZE, OFFSET_X, OFFSET_Y,
@@ -24,13 +24,13 @@ impl Plugin for BrickPlugin {
         app.add_event::<LinesRemoved>()
             .init_resource::<Bricks>()
             .register_type::<Brick>()
-            .add_system_set(
-                SystemSet::on_update(GameState::InGame)
-                    .with_run_criteria(FixedTimestep::step(1. / 10.))
-                    .with_system(remove_lines)
-                    .with_system(move_lines_down),
+            .add_systems(
+                (remove_lines, move_lines_down)
+                    .chain()
+                    .in_set(OnUpdate(GameState::InGame))
+                    .in_schedule(CoreSchedule::FixedUpdate),
             )
-            .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset));
+            .add_system(reset.in_schedule(OnEnter(GameState::InGame)));
     }
 }
 

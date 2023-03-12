@@ -1,6 +1,6 @@
 [package]
 name = "tetris"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,13 +20,25 @@ lto = "thin"
 [dependencies]
 rand = "0.8"
 ignore-result = "0.2"
-bevy_asset_loader = "0.14.1"
+bevy_asset_loader = "0.15.0"
 
 [dependencies.bevy]
-version = "0.9.1"
+version = "0.10.0"
 default-features = false
-features = ["render", "bevy_asset", "bevy_audio", "bevy_winit", "png", "x11", "vorbis"]
+features = [
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_asset",
+    "bevy_sprite",
+    "bevy_audio",
+    "bevy_winit",
+    "bevy_ui",
+    "bevy_text",
+    "png",
+    "x11",
+    "vorbis",
+]
 
 [features]
 default = ["fast-compile"]
-fast-compile = ["bevy/dynamic"]
+fast-compile = ["bevy/dynamic_linking"]

@@ -25,17 +25,18 @@ pub struct ShapePlugin;
 impl Plugin for ShapePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ShapeSpawned>()
-            .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
-            .add_system_set(
-                SystemSet::on_update(GameState::InGame)
-                    .with_system(check_game_over.before(move_shape))
-                    .with_system(move_shape),
+            .add_system(reset.in_schedule(OnEnter(GameState::Starting)))
+            .add_system(rotate.in_set(OnUpdate(GameState::InGame)))
+            .add_systems(
+                (check_game_over, move_down)
+                    .chain()
+                    .in_set(OnUpdate(GameState::InGame)),
             );
     }
 }
 
 fn check_game_over(
-    mut state: ResMut<State<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
     query: Query<(&Transform, &Children), (With<Shape>, Changed<Transform>)>,
     child_query: Query<(&Transform, &Sprite), (With<ShapeBrick>, Without<Shape>)>,
     bricks: Res<Bricks>,
@@ -53,18 +54,36 @@ fn check_game_over(
             .any(|(child_transform, _)| collides(transform, child_transform, bricks))
         {
             println!("game over");
-            state
-                .replace(GameState::GameOver)
-                .expect("cannot change state");
+            next_state.set(GameState::GameOver);
         }
     }
 }
 
-fn move_shape(
+fn rotate(
+    mut query: Query<(&mut Transform, &Children), With<Shape>>,
+    child_query: Query<(&Transform, &Sprite), (With<ShapeBrick>, Without<Shape>)>,
+    mut control_events: EventReader<ControlEvent>,
+    mut bricks: ResMut<Bricks>,
+) {
+    if let Ok((mut transform, children)) = query.get_single_mut() {
+        let children: Vec<_> = children
+            .into_iter()
+            .map(|child| child_query.get(*child).unwrap())
+            .collect();
+
+        for next_transform in control_events
+            .iter()
+            .filter_map(transform_from_control_event)
+        {
+            try_move_shape(next_transform, &mut transform, &children, &mut bricks).ignore();
+        }
+    }
+}
+
+fn move_down(
     mut commands: Commands,
     mut query: Query<(Entity, &mut Transform, &Children), With<Shape>>,
     child_query: Query<(&Transform, &Sprite), (With<ShapeBrick>, Without<Shape>)>,
-    mut control_events: EventReader<ControlEvent>,
     mut tick_events: EventReader<Tick>,
     mut spawn_events: EventWriter<ShapeSpawned>,
     mut bricks: ResMut<Bricks>,
@@ -77,19 +96,11 @@ fn move_shape(
             .map(|child| child_query.get(*child).unwrap())
             .collect();
 
-        for next_transform in control_events
-            .iter()
-            .filter_map(transform_from_control_event)
-        {
-            try_move_shape(next_transform, &mut transform, &children, &mut bricks).ignore();
-        }
-
-        for next_transform in tick_events.iter().map(|_| Transform {
+        for move_down in tick_events.iter().map(|_| Transform {
             translation: Vec3::Y * -BRICK_SIZE,
             ..default()
         }) {
-            let result = try_move_shape(next_transform, &mut transform, &children, &mut bricks);
-
+            let result = try_move_shape(move_down, &mut transform, &children, &mut bricks);
             if result.is_err() {
                 // if shape could not move down
                 shape_to_bricks(commands, &mut bricks, &*transform, &children);

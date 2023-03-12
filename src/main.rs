@@ -23,9 +23,11 @@ const BRICK_COLS_RANGE: std::ops::RangeInclusive<i8> = {
     -half..=half
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Default, States)]
 pub enum GameState {
+    #[default]
     AssetLoading,
+    Starting,
     InGame,
     Paused,
     GameOver,
@@ -48,23 +50,21 @@ impl LineStats {
 
 fn main() {
     App::new()
-        .add_state(GameState::AssetLoading)
+        .add_state::<GameState>()
         .add_loading_state(
-            LoadingState::new(GameState::AssetLoading)
-                .continue_to_state(GameState::InGame)
-                .with_collection::<SoundAssets>(),
+            LoadingState::new(GameState::AssetLoading).continue_to_state(GameState::Starting),
         )
-        .insert_resource(Msaa { samples: 1 })
+        .add_collection_to_loading_state::<_, SoundAssets>(GameState::AssetLoading)
+        .insert_resource(Msaa::Sample2)
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                height: 800.,
-                width: 1000.,
+            primary_window: Some(Window {
+                resolution: (800., 1000.).into(),
                 resizable: false,
                 title: "Tetris".into(),
                 present_mode: PresentMode::Fifo,
                 canvas: Some("#bevy".into()),
                 ..Default::default()
-            },
+            }),
             ..Default::default()
         }))
         .add_plugin(ui::UiPlugin)
@@ -76,46 +76,43 @@ fn main() {
         .init_resource::<GameStats>()
         .add_startup_system(setup)
         .add_system(bevy::window::close_on_esc)
-        .add_system(pause_game)
-        .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
-        .add_system_set(SystemSet::on_update(GameState::InGame).with_system(update_statistics))
+        .add_system(pause_resume_game)
+        .add_system(reset.in_schedule(OnEnter(GameState::Starting)))
+        .add_system(update_statistics.in_set(OnUpdate(GameState::InGame)))
         .run();
 }
 
 fn setup(mut commands: Commands) {
-    if cfg!(target_arch = "wasm32") {
-        // wgpu does not seem to support bloom on WASM
-        commands.spawn(Camera2dBundle::default());
-    } else {
-        commands.spawn((
-            Camera2dBundle {
-                camera: Camera {
-                    hdr: true,
-                    ..default()
-                },
+    commands.spawn((
+        Camera2dBundle {
+            camera: Camera {
+                hdr: true,
                 ..default()
             },
-            BloomSettings {
-                threshold: 0.5,
-                ..Default::default()
-            },
-        ));
-    }
+            ..default()
+        },
+        BloomSettings {
+            intensity: 0.25,
+            ..BloomSettings::NATURAL
+        },
+    ));
 }
 
-fn pause_game(mut control_events: EventReader<ControlEvent>, mut state: ResMut<State<GameState>>) {
+fn pause_resume_game(
+    mut control_events: EventReader<ControlEvent>,
+    current_state: Res<State<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
     for &event in control_events.iter() {
         if event != ControlEvent::Pause {
             continue;
         }
 
-        match state.current() {
-            GameState::InGame => state.push(GameState::Paused).expect("cannot change state"),
-            GameState::Paused => state.pop().expect("cannot change state"),
-            GameState::GameOver => state
-                .replace(GameState::InGame)
-                .expect("cannot change state"),
-            GameState::AssetLoading => (),
+        match current_state.0 {
+            GameState::InGame => next_state.set(GameState::Paused),
+            GameState::Paused => next_state.set(GameState::InGame),
+            GameState::GameOver => next_state.set(GameState::Starting),
+            GameState::AssetLoading | GameState::Starting => (),
         }
     }
 }
@@ -134,6 +131,7 @@ fn update_statistics(
     }
 }
 
-fn reset(mut commands: Commands) {
-    commands.insert_resource(GameStats::default())
+fn reset(mut commands: Commands, mut next_state: ResMut<NextState<GameState>>) {
+    commands.insert_resource(GameStats::default());
+    next_state.set(GameState::InGame);
 }

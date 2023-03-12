@@ -26,15 +26,16 @@ pub struct SoundAssets {
 
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(SystemSet::on_enter(GameState::InGame).with_system(play_music))
-            .add_system_set(SystemSet::on_exit(GameState::InGame).with_system(stop_music))
-            .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(pause_music))
-            .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(unpause_music))
-            .add_system_set(SystemSet::on_enter(GameState::GameOver).with_system(game_over))
-            .add_system_set(
-                SystemSet::on_update(GameState::InGame)
-                    .with_system(update_playback_speed)
-                    .with_system(sound_effects),
+        app.add_system(play_music.in_schedule(OnExit(GameState::Starting)))
+            .add_system(pause_music.in_schedule(OnEnter(GameState::Paused)))
+            .add_system(unpause_music.in_schedule(OnExit(GameState::Paused)))
+            .add_systems(
+                (stop_music, game_over)
+                    .chain()
+                    .in_schedule(OnEnter(GameState::GameOver)),
+            )
+            .add_systems(
+                (update_playback_speed, sound_effects).in_set(OnUpdate(GameState::InGame)),
             );
     }
 }

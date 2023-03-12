@@ -24,11 +24,11 @@ pub struct TickPlugin;
 impl Plugin for TickPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<Tick>()
-            .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(reset))
-            .add_system_set(
-                SystemSet::on_update(GameState::InGame)
-                    .with_system(tick_system)
-                    .with_system(speedup),
+            .add_system(reset.in_schedule(OnEnter(GameState::Starting)))
+            .add_systems(
+                (speedup, tick_system)
+                    .chain()
+                    .in_set(OnUpdate(GameState::InGame)),
             );
     }
 }

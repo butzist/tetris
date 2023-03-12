@@ -23,13 +23,16 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup)
             .init_collection::<FontAssets>()
-            .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(hide_status))
-            .add_system_set(SystemSet::on_enter(GameState::Paused).with_system(show_paused))
-            .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(hide_status))
-            .add_system_set(SystemSet::on_update(GameState::InGame).with_system(update_statistics))
-            .add_system_set(SystemSet::on_enter(GameState::GameOver).with_system(show_game_over));
+            .add_system(hide_status.in_schedule(OnEnter(GameState::InGame)))
+            .add_system(show_paused.in_schedule(OnEnter(GameState::Paused)))
+            .add_system(show_game_over.in_schedule(OnEnter(GameState::GameOver)))
+            .add_system(update_statistics.in_set(OnUpdate(GameState::InGame)));
     }
 }
+
+const CENTER_COLUMN_HEIGHT: f32 = BRICK_SIZE * (BRICK_ROWS + 1) as f32;
+const CENTER_COLUMN_WIDTH: f32 = BRICK_SIZE * BRICK_COLS as f32 + 10.;
+const SIDE_COLUMN_WIDTH: f32 = (800. - CENTER_COLUMN_WIDTH) / 2.;
 
 fn setup(mut commands: Commands, assets: Res<FontAssets>) {
     commands
@@ -45,8 +48,7 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
         .with_children(|parent| {
             parent.spawn(NodeBundle {
                 style: Style {
-                    size: Size::new(Val::Percent(0.0), Val::Percent(100.0)),
-                    flex_grow: 1.0,
+                    size: Size::new(Val::Px(SIDE_COLUMN_WIDTH), Val::Percent(100.0)),
                     ..default()
                 },
                 background_color: UI_BG_COLOR.into(),
@@ -56,10 +58,7 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
             parent
                 .spawn(NodeBundle {
                     style: Style {
-                        size: Size::new(
-                            Val::Px(BRICK_SIZE * BRICK_COLS as f32 + 10.),
-                            Val::Percent(100.0),
-                        ),
+                        size: Size::new(Val::Px(CENTER_COLUMN_WIDTH), Val::Percent(100.0)),
                         flex_direction: FlexDirection::Column,
                         ..default()
                     },
@@ -69,7 +68,7 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
                 .with_children(|parent| {
                     parent.spawn(NodeBundle {
                         style: Style {
-                            size: Size::new(Val::Percent(100.0), Val::Percent(0.0)),
+                            size: Size::new(Val::Percent(100.0), Val::Auto),
                             flex_grow: 1.0,
                             ..default()
                         },
@@ -80,10 +79,7 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
                     parent
                         .spawn(NodeBundle {
                             style: Style {
-                                size: Size::new(
-                                    Val::Percent(100.),
-                                    Val::Px(BRICK_SIZE * (BRICK_ROWS + 1) as f32),
-                                ),
+                                size: Size::new(Val::Percent(100.), Val::Px(CENTER_COLUMN_HEIGHT)),
                                 margin: UiRect::all(Val::Px(5.0)),
                                 flex_direction: FlexDirection::Column,
                                 justify_content: JustifyContent::Center,
@@ -103,19 +99,19 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
                                             color: Color::WHITE,
                                         },
                                     )
-                                    .with_text_alignment(TextAlignment::CENTER)
+                                    .with_text_alignment(TextAlignment::Center)
                                     .with_style(Style {
                                         align_self: AlignSelf::Center,
                                         ..Default::default()
                                     }),
                                 )
-                                .insert(Visibility { is_visible: true })
+                                .insert(Visibility::Visible)
                                 .insert(StatusText);
                         });
 
                     parent.spawn(NodeBundle {
                         style: Style {
-                            size: Size::new(Val::Percent(100.0), Val::Percent(0.0)),
+                            size: Size::new(Val::Percent(100.0), Val::Auto),
                             flex_grow: 1.0,
                             ..default()
                         },
@@ -127,10 +123,11 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
             parent
                 .spawn(NodeBundle {
                     style: Style {
-                        size: Size::new(Val::Percent(0.0), Val::Percent(100.0)),
-                        flex_grow: 1.0,
-                        flex_direction: FlexDirection::Row,
+                        size: Size::new(Val::Px(SIDE_COLUMN_WIDTH), Val::Percent(100.0)),
+                        padding: UiRect::all(Val::Px(10.0)),
+                        flex_direction: FlexDirection::Column,
                         justify_content: JustifyContent::Center,
+                        align_items: AlignItems::FlexEnd,
                         ..default()
                     },
                     background_color: UI_BG_COLOR.into(),
@@ -147,11 +144,7 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
                                     color: Color::WHITE,
                                 },
                             )
-                            .with_text_alignment(TextAlignment::TOP_RIGHT)
-                            .with_style(Style {
-                                align_self: AlignSelf::Center,
-                                ..Default::default()
-                            }),
+                            .with_text_alignment(TextAlignment::Right),
                         )
                         .insert(StatisticsText);
                 });
@@ -160,21 +153,21 @@ fn setup(mut commands: Commands, assets: Res<FontAssets>) {
 
 fn hide_status(mut query: Query<&mut Visibility, With<StatusText>>) {
     for mut visibility in &mut query {
-        visibility.is_visible = false;
+        *visibility = Visibility::Hidden;
     }
 }
 
 fn show_paused(mut query: Query<(&mut Text, &mut Visibility), With<StatusText>>) {
     for (mut text, mut visibility) in &mut query {
         text.sections[0].value = "Game paused\nPress SPACE".into();
-        visibility.is_visible = true;
+        *visibility = Visibility::Visible;
     }
 }
 
 fn show_game_over(mut query: Query<(&mut Text, &mut Visibility), With<StatusText>>) {
     for (mut text, mut visibility) in &mut query {
         text.sections[0].value = "Game over\nPress SPACE".into();
-        visibility.is_visible = true;
+        *visibility = Visibility::Visible;
     }
 }
 
