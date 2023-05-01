@@ -20,7 +20,7 @@ lto = "thin"
 [dependencies]
 rand = "0.8"
 ignore-result = "0.2"
-bevy_asset_loader = "0.15.0"
+bevy_asset_loader = "0.16.0"
 
 [dependencies.bevy]
 version = "0.10.0"
